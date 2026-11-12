@@ -1,0 +1,13 @@
+[Unit]
+Description=Apple logo glow (panel backlight used as a status light)
+Documentation=file:/opt/serverglow/README.md
+
+[Service]
+Type=simple
+ExecStartPre=/opt/serverglow/glow-prepare.sh
+ExecStart=/usr/bin/python3 /opt/serverglow/glowd.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
