@@ -43,7 +43,7 @@ running = True
 _reload = False
 last_write = -1
 bright_path = None   # set in main() by find_backlight()
-bright_max = 100     # device scale: a 0-100 level is written as level*bright_max/100
+bright_max = 100     # device scale: writes level * bright_max / 100
 
 
 def log(msg):
@@ -55,7 +55,7 @@ def load_cfg():
     cfg = {
         "mode": "breathing",   # breathing | heartbeat | load
         "min": 8,              # lowest backlight level (subtle glow)
-        "max": 45,             # peak backlight level
+        "max": 100,            # peak backlight level
         "period": 6.0,         # seconds per breathing cycle
         "open_level": 60,      # backlight while the lid is open (readable)
     }

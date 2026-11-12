@@ -6,6 +6,7 @@ Documentation=file:/opt/serverglow/README.md
 Type=simple
 ExecStartPre=/opt/serverglow/glow-prepare.sh
 ExecStart=/usr/bin/python3 /opt/serverglow/glowd.py
+ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5
 

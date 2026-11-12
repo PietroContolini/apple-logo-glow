@@ -20,15 +20,55 @@ breathing status LED.
 
 ## Usage
 
-    sudo bash install.sh              # set it all up (installs to /opt/serverglow)
+    sudo bash install.sh              # set it all up in /opt/serverglow
     sudo systemctl restart glowd      # after editing /opt/serverglow/glow.conf
     sudo bash revert.sh               # fully undo
 
-Patterns: edit `/opt/serverglow/glow.conf`
-(`mode = breathing | heartbeat | load`), then restart glowd. `load` makes it a CPU meter: slow faint breath when idle,
-brighter when busy. While the lid is open the pulse pauses and the screen
-parks at `open_level` (default 60), giving full stock console behaviour;
-closing the lid resumes the pattern.
+Patterns and levels: see the Customizing section below. While the lid is
+open the pulse pauses and the screen parks at `open_level` (default 60),
+giving full stock console behaviour; closing the lid resumes the pattern.
+
+## Customizing
+
+All settings live in `/opt/serverglow/glow.conf`. Edit it, then apply with
+either:
+
+    sudo systemctl reload glowd     # SIGHUP, no interruption
+    sudo systemctl restart glowd    # or a full restart
+
+Every option, with the shipped defaults:
+
+    # Pattern: breathing | heartbeat | load
+    mode = breathing
+
+    # Backlight levels, 0-100. 100 is full backlight.
+    min = 8
+    max = 100
+
+    # Seconds per cycle, for breathing and heartbeat.
+    period = 6.0
+
+    # Fixed backlight while the lid is open (maintenance), so the
+    # console stays readable.
+    open_level = 60
+
+The three patterns:
+
+- `breathing` (default): a slow Apple-Watch style inhale and exhale, one
+  cycle every `period` seconds.
+- `heartbeat`: a lub-dub pulse, one double beat every `period` seconds.
+- `load`: a CPU usage indicator. An idle machine breathes slowly and
+  faintly; the busier the CPU gets the brighter the logo, reaching `max`
+  at roughly 45% sustained load.
+
+Tuning tips:
+
+- `min = 8, max = 100` is the full-on look; drop `max` to around 45 for a
+  subtler glow in a dark room.
+- `period` only affects `breathing` and `heartbeat`; `load` uses its own
+  slow idle breath and then follows CPU use.
+- Raise `min` if you want the logo never to settle dimly, or lower it for
+  deeper contrast between pulses.
 
 ## Files
 

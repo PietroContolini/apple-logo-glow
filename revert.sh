@@ -3,7 +3,10 @@
 set -euo pipefail
 TARGET="/opt/serverglow"
 
-[ "$(id -u)" -eq 0 ] || { echo "run me with sudo: sudo bash revert.sh"; exit 1; }
+if [ "$(id -u)" -ne 0 ]; then
+  echo "run me with sudo: sudo bash revert.sh"
+  exit 1
+fi
 
 systemctl disable --now glowd.service 2>/dev/null || true
 rm -f /etc/systemd/system/glowd.service

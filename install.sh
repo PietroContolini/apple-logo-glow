@@ -5,7 +5,10 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 TARGET="/opt/serverglow"
 
-[ "$(id -u)" -eq 0 ] || { echo "run me with sudo: sudo bash install.sh"; exit 1; }
+if [ "$(id -u)" -ne 0 ]; then
+  echo "run me with sudo: sudo bash install.sh"
+  exit 1
+fi
 
 if ! ls /sys/class/backlight/*/brightness >/dev/null 2>&1; then
   echo "WARNING: no backlight device under /sys/class/backlight."
@@ -19,7 +22,8 @@ cp "$SRC/glowd.py" "$SRC/glow-prepare.sh" "$SRC/README.md" "$TARGET/"
 chmod 755 "$TARGET/glow-prepare.sh"
 
 echo "==> backing up /etc/acpi/lid.sh -> /etc/acpi/lid.sh.pre-glow"
-[ -f /etc/acpi/lid.sh.pre-glow ] || cp /etc/acpi/lid.sh /etc/acpi/lid.sh.pre-glow
+[ -f /etc/acpi/lid.sh.pre-glow ] ||
+  cp /etc/acpi/lid.sh /etc/acpi/lid.sh.pre-glow
 
 echo "==> replacing lid.sh: closing the lid no longer blanks the panel"
 cat > /etc/acpi/lid.sh <<'EOF2'
