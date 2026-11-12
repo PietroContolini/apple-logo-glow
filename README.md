@@ -1,11 +1,12 @@
 # Apple Logo Glow
 
 If you upcycled an old MacBook with the glowing Apple logo into a Linux
-server, this repo lets you use that logo again. You can run it purely as a
-cool aesthetic, a slow glow pulsing away on a shelf, or turn it into a
-status light that tells you what the server is doing. It's the screen's
-backlight doing all the work, driven by a small Python script, so you can
-tune every bit of it or write your own behaviour.
+server, this repo lets you use that logo again. Mine sits on a wall with the
+lid shut, so the logo is all you ever see of the machine. You can run it
+purely as a cool aesthetic, a slow glow pulsing away on a shelf, or turn it
+into a status light that tells you what the server is doing. It's the
+screen's backlight doing all the work, driven by a small Python script, so
+you can tune every bit of it or write your own behaviour.
 
 <!--
 Hero image: save a photo or loop as assets/demo.gif, then uncomment:
@@ -20,9 +21,11 @@ Two requirements:
   MacBook Air or MacBook Pro.
 - Linux installed on it.
 
-That's the whole compatibility story. After 2016 Apple switched to the plain
-metal logo that never lights up, and macOS doesn't hand you the backlight
-anyway, so neither of those can do this.
+After 2016 Apple switched to the plain metal logo that never lights up, and
+macOS doesn't hand you the backlight anyway, so neither of those can do
+this. What it does need is root, since it writes to sysfs and drives the
+console, and it was written and tested on Ubuntu with the stock tty1 text
+console (Debian and Ubuntu both default to it).
 
 ## Getting it running
 
@@ -32,23 +35,31 @@ cd apple-logo-glow
 sudo bash install.sh
 ```
 
-The logo should start breathing within a second or two. `systemctl status
-glowd` if you want to confirm it's running, `journalctl -u glowd` if
-something looks wrong.
+There's nothing to install by hand first: on a reasonably stock Ubuntu or
+Debian you already have everything it uses (systemd, python3, setterm). The
+logo should start breathing within a second or two. `systemctl status glowd`
+if you want to confirm it's running, `journalctl -u glowd` if something
+looks wrong; the first few lines there also tell you which backlight device
+it found and what range that device uses.
 
-It copies itself to `/opt/serverglow`, and if you ever want it gone,
-`sudo bash revert.sh` puts the machine back exactly like it was.
+`install.sh` copies the files to `/opt/serverglow`, backs up and swaps the
+lid handler, and enables the unit, so the glow comes back by itself after
+every reboot. If you ever want it gone, `sudo bash revert.sh` puts the
+machine back exactly like it was.
 
 ## Patterns and config
 
 Three patterns come with it:
 
-- `breathing`, the default: a slow inhale and exhale, Apple Watch style.
+- `breathing`, the default: a slow inhale and exhale, Apple Watch style,
+  one cycle every six seconds out of the box.
 - `heartbeat`: a lub-dub pulse, if you prefer your servers to have a
-  cardiovascular system.
-- `load`: the status one. Server idle, the logo breathes slow and dim; CPU
-  working, it gets brighter. Full brightness somewhere around 45% sustained
-  load.
+  cardiovascular system. The same `period` knob sets the tempo.
+- `load`: the status one. It reads CPU use from `/proc/stat` on every frame
+  and smooths it over about half a second, so the glow reacts without
+  flickering. Server idle, the logo does a slower and dimmer 12-second
+  breath; CPU working, it climbs, hitting full brightness somewhere around
+  45% sustained load.
 
 All the settings are in `/opt/serverglow/glow.conf`:
 
@@ -61,13 +72,18 @@ open_level = 60     # brightness with the lid open, so the screen is readable
 ```
 
 Edit it, then `sudo systemctl reload glowd` (that's a SIGHUP, the glow never
-hiccups) or restart the service if you're feeling traditional.
+hiccups) or restart the service if you're feeling traditional. The file is
+forgiving: numbers get clamped to sane ranges when they're loaded, and a
+line it can't parse is logged and skipped, so a typo can't take the glow
+down.
 
 If none of the three patterns fit, writing your own is easy: the daemon is
 about 300 lines of standard-library Python and a pattern is just a function
 from elapsed seconds to a level of 0-100. Copy `heartbeat_level()`, add a
-branch in `main()`, and any new keys you put in glow.conf come through
-automatically. If you come up with a good one, send a PR.
+branch in `main()`, and if you want your own config knobs, add them to the
+defaults dict in `load_cfg()` first (unknown keys in glow.conf are ignored
+on purpose, which is also why a typo in there never breaks the daemon). If
+you come up with a good one, send a PR.
 
 ## How it works
 
@@ -94,9 +110,11 @@ What `install.sh` sets up:
   backlight device itself (`acpi_video0` or `intel_backlight`) and scales to
   whatever range that device uses.
 
-The lid sensor is watched the whole time. Open it: the glow stops, the
+The lid sensor is checked ten times a second. Open it: the glow stops, the
 screen parks at `open_level`, everything behaves like stock Linux. Close it:
-the panel gets woken up and the pattern picks up where it left off.
+the panel gets woken up and the pattern picks up where it left off. Every
+few minutes it also re-pokes the console in case anything blanked it behind
+its back.
 
 A few choices I'd make again: standard library only, nothing to `pip
 install` on a box that isn't your dev machine; config reloads over SIGHUP so
@@ -109,6 +127,8 @@ it logs why and exits, rather than running forever doing nothing.
   above (original kept at `/etc/acpi/lid.sh.pre-glow`), tty1 auto-blank off
   at runtime only (kernel boot parameters untouched), console quieted.
   Stock behaviour again from the next reboot.
+- It runs as root, because writing brightness and poking the console both
+  need it. That's the whole footprint: one unit and those few system files.
 - Power: the backlight adds roughly 1-4W depending on how bright you run
   it, and the machine runs a little warmer.
 - Logo dark after a reboot? `journalctl -u glowd`, then check
