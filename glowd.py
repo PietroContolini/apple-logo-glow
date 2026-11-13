@@ -58,6 +58,8 @@ def load_cfg():
         "max": 100,            # peak backlight level
         "period": 6.0,         # seconds per breathing cycle
         "open_level": 60,      # backlight while the lid is open (readable)
+        "step": 4,             # quantize output to whole steps of this many
+                               # levels (1 = finest / old behaviour)
     }
     if os.path.exists(CONF_PATH):
         for raw in open(CONF_PATH, encoding="utf-8"):
@@ -79,6 +81,7 @@ def load_cfg():
     cfg["min"] = max(0, min(cfg["min"], 100))
     cfg["max"] = max(cfg["min"] + 1, min(cfg["max"], 100))
     cfg["open_level"] = max(cfg["min"] + 1, min(cfg["open_level"], 100))
+    cfg["step"] = max(1, min(cfg["step"], 50))
     return cfg
 
 
@@ -276,7 +279,18 @@ def main():
                 else:
                     target = lo + (hi - lo) * min(1.0, ema * 2.2)
 
-            set_brightness(int(round(max(0, min(100, target)))))
+            level = int(round(max(0, min(100, target))))
+            q = cfg.get("step", 1)
+            if q > 1:
+                # Snap to multiples of `step` above the pattern floor, so the
+                # endpoints are always hit exactly. Every whole level that
+                # reaches the hardware costs an ACPI interrupt plus a kernel
+                # uevent that udev, PID 1 and logind all process (measured at
+                # ~1.3% of a core per change-per-second on old MacBooks), so
+                # fewer, bigger steps keep the glow looking identical on a
+                # slow breath while cutting the CPU churn by the same factor.
+                level = lo + int(round((level - lo) / q)) * q
+            set_brightness(max(lo, min(100, level)))
 
             if now >= next_rearm:
                 rearm_console()
